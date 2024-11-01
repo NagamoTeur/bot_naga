@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import discord
 from discord.ext import commands
-
+from keep_alive import keep_alive
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 print(f"Token chargé : {token}")  # Pour le débogage
@@ -25,4 +25,5 @@ async def on_ready():
     print("Commandes synchronisées avec succès.")  # Message de confirmation
 
 # Lancer le bot
+keep_alive()
 bot.run(token)
