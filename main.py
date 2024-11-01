@@ -98,7 +98,7 @@ async def on_message(message):
             # Récupérer les informations de run précédentes
             personnage = run_data[message.author.id]['personnage']
             objectif = run_data[message.author.id]['objectif']
-            nombre_regles = len(regles_difficulte)  # On peut choisir toutes les règles
+            nombre_regles = 2  # On peut choisir toutes les règles
 
             # Reroll des règles
             new_regles = random.sample(regles_difficulte, nombre_regles) if nombre_regles > 0 else []
