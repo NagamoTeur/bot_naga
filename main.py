@@ -1,8 +1,12 @@
+import os
+from dotenv import load_dotenv
 import discord
 from discord.ext import commands
 import random
 
-token = 'MTMwMTkzMjA2NDY1NTgwNjUyNg.GM-9t4.6tRqxdthsLs3jFKVksxzLtiPaVBoxwcXvVkCk8'
+load_dotenv()
+token = os.getenv('DISCORD_TOKEN')
+print(f"Token chargé : {token}")  # Ajoute cette ligne pour déboguer
 
 client = discord.Client(intents=discord.Intents.all())
 
