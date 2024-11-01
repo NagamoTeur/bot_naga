@@ -6,9 +6,10 @@ import random
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
-print(f"Token chargé : {token}")  # Ajoute cette ligne pour déboguer
+print(f"Token chargé : {token}")  # Pour le débogage
 
-client = discord.Client(intents=discord.Intents.all())
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Listes pour stocker les objectifs, personnages et règles
 objectifs = [
@@ -59,59 +60,56 @@ regles_difficulte = [
 # Dictionnaire pour stocker les informations de run
 run_data = {}
 
-@client.event
-async def on_ready():
-    print(f'Nous sommes connectés en tant que {client.user}')
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('/isaac'):
-        args = message.content.split()
-        nombre_regles = 2  # Valeur par défaut
-
-        if len(args) > 1 and args[1].isdigit():
-            nombre_regles = min(max(int(args[1]), 0), len(regles_difficulte))  # Limiter le nombre de règles
+@bot.tree.command(name='isaac', description='Génère un défi Isaac aléatoire.')
+async def isaac(interaction: discord.Interaction, nombre_regles: int = 2):
+    """Génère un défi Isaac aléatoire avec un nombre de règles spécifié (par défaut 2)."""
+    try:
+        nombre_regles = min(max(nombre_regles, 0), len(regles_difficulte))  # Limiter le nombre de règles
 
         objectif = random.choice(objectifs)
         personnage = random.choice(personnages)
         regles = random.sample(regles_difficulte, nombre_regles) if nombre_regles > 0 else []
 
         # Stocker les informations de run
-        run_data[message.author.id] = {
+        run_data[interaction.user.id] = {
             'personnage': personnage,
             'objectif': objectif,
             'regles': regles
         }
 
-        await message.channel.send(
-            f"{message.author.mention}, voici ton défi Isaac : \n"
+        await interaction.response.send_message(
+            f"{interaction.user.mention}, voici ton défi Isaac : \n"
             f"* Joue avec **{personnage}** \n"
             f"* Objectif : **{objectif}** \n"
             f"* Règles : {', '.join(regles) if regles else 'Aucune règle imposée.'}"
         )
+    except Exception as e:
+        await interaction.response.send_message(
+            f"Désolé {interaction.user.mention}, une erreur est survenue : {str(e)}"
+        )
+        print(f"Erreur lors de la génération du défi : {e}")
 
-    elif message.content.startswith('/reroll'):
-        if message.author.id in run_data:
-            # Récupérer les informations de run précédentes
-            personnage = run_data[message.author.id]['personnage']
-            objectif = run_data[message.author.id]['objectif']
-            nombre_regles = 2  # On peut choisir toutes les règles
+@bot.tree.command(name='clean', description='Supprime un certain nombre de messages du canal actuel.')
+async def clean(interaction: discord.Interaction, nombre_messages: int = 50):
+    """Supprime un nombre spécifié de messages du canal actuel."""
+    try:
+        channel = interaction.channel
+        
+        # Limiter le nombre de messages à 100 maximum et à 1 minimum
+        nombre_messages = min(max(nombre_messages, 1), 100)
 
-            # Reroll des règles
-            new_regles = random.sample(regles_difficulte, nombre_regles) if nombre_regles > 0 else []
+        deleted = await channel.purge(limit=nombre_messages)  # Supprime le nombre de messages spécifié
+        await interaction.response.send_message(f"{len(deleted)} messages supprimés.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(
+            f"Désolé, une erreur est survenue lors de la suppression des messages : {str(e)}"
+        )
+        print(f"Erreur lors de la suppression des messages : {e}")
 
-            run_data[message.author.id]['regles'] = new_regles
+@bot.event
+async def on_ready():
+    print(f'Nous sommes connectés en tant que {bot.user}')
+    await bot.tree.sync()  # Synchroniser les commandes
+    print("Commandes synchronisées avec succès.")  # Message de confirmation
 
-            await message.channel.send(
-                f"{message.author.mention}, voici les nouvelles règles pour ton défi Isaac : \n"
-                f"* Joue avec **{personnage}** \n"
-                f"* Objectif : **{objectif}** \n"
-                f"* Nouvelles règles : {', '.join(new_regles) if new_regles else 'Aucune règle imposée.'}"
-            )
-        else:
-            await message.channel.send(f"{message.author.mention}, tu n'as pas encore lancé de défi. Utilise `/isaac` d'abord.")
-
-client.run(token=token)
+bot.run(token)
