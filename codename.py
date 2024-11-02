@@ -23,22 +23,28 @@ def setup_codename_commands(bot: commands.Bot):
         guild = interaction.guild
         category = interaction.channel.category
 
+        # Vérifie le canal vocal "Codename"
+        codename_channel = discord.utils.get(guild.voice_channels, name="Codename")
+        if not codename_channel or not isinstance(codename_channel, discord.VoiceChannel):
+            await interaction.response.send_message(
+                "Le canal vocal 'Codename' n'existe pas.",
+                ephemeral=True
+            )
+            return
+
+        members = codename_channel.members  # Récupère les membres du canal vocal "Codename"
+        if len(members) < 2:
+            await interaction.response.send_message(
+                "Pas assez de membres dans le canal 'Codename' pour démarrer la partie.",
+                ephemeral=True
+            )
+            return
+
+        # Créer les canaux
         try:
-            # Créer les canaux
             spymaster_channel = await guild.create_voice_channel("Spymaster", category=category)
             operators_channel = await guild.create_voice_channel("Operators", category=category)
             text_channel = await guild.create_text_channel(f"codename-{code}", category=category)
-
-            # Déplacer les membres
-            codename_channel = interaction.channel
-            members = codename_channel.members
-
-            if len(members) < 2:
-                await interaction.response.send_message(
-                    "Pas assez de membres dans le canal pour démarrer la partie.",
-                    ephemeral=True
-                )
-                return
 
             random_members = random.sample(members, min(2, len(members)))
 
@@ -76,22 +82,24 @@ def setup_codename_commands(bot: commands.Bot):
             spymaster_channel = discord.utils.get(guild.voice_channels, name="Spymaster")
             operators_channel = discord.utils.get(guild.voice_channels, name="Operators")
             text_channel = discord.utils.get(guild.text_channels, name=lambda name: name.startswith("codename-"))
+            codename_channel = discord.utils.get(guild.voice_channels, name="Codename")
 
-            if spymaster_channel:
-                for member in spymaster_channel.members:
-                    await member.move_to(None)  # Les renvoie au canal par défaut
-
-            if operators_channel:
-                for member in operators_channel.members:
-                    await member.move_to(None)  # Les renvoie au canal par défaut
+            # Déplacer les membres vers le canal "Codename"
+            for channel in (spymaster_channel, operators_channel):
+                if channel:
+                    for member in channel.members:
+                        await member.move_to(codename_channel)  # Les renvoie au canal "Codename"
 
             # Suppression des canaux
+            delete_tasks = []
             if spymaster_channel:
-                await spymaster_channel.delete()
+                delete_tasks.append(spymaster_channel.delete())
             if operators_channel:
-                await operators_channel.delete()
+                delete_tasks.append(operators_channel.delete())
             if text_channel:
-                await text_channel.delete()
+                delete_tasks.append(text_channel.delete())
+
+            await discord.utils.wait(delete_tasks)  # Attend que toutes les suppressions soient terminées
 
             await interaction.response.send_message(
                 "La partie Codenames a été arrêtée et les canaux ont été supprimés.",
